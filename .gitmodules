@@ -1,0 +1,3 @@
+[submodule "ICE"]
+	path = ICE
+	url = https://github.com/bioinformatist/ICE.git
