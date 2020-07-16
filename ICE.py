@@ -49,17 +49,11 @@ def pre_defined(args):
     pred = pd.DataFrame(pred)
     pred.index = all_models
     pred = pred.T
-    if args.output_mode == 'value':
-        pred.to_csv(args.output_prefix + '_value.csv')
-        return
-    if args.output_mode == 'cc':
+    if args.new_circ:
         cc = pred.corrwith(new_circ)
         cc.to_csv(args.output_prefix + '_cc.csv', header = ['CC'])
-        return
-    if args.output_mode == 'both':
+    if not args.disable_value_output or not args.new_circ:
         pred.to_csv(args.output_prefix + '_value.csv')
-        cc = pred.corrwith(new_circ)
-        cc.to_csv(args.output_prefix + '_cc.csv', header = ['CC'])
 
 def predict_with_pre_defined(m):
     from tensorflow.keras import models, callbacks, utils
@@ -92,17 +86,11 @@ def custom(args):
     pred = pd.DataFrame(pred)
     pred.index = train_circ.columns
     pred = pred.T
-    if args.output_mode == 'value':
-        pred.to_csv(args.output_prefix + '_value.csv')
-        return
-    if args.output_mode == 'cc':
+    if args.new_circ:
         cc = pred.corrwith(new_circ)
         cc.to_csv(args.output_prefix + '_cc.csv', header = ['CC'])
-        return
-    if args.output_mode == 'both':
+    if not args.disable_value_output or not args.new_circ:
         pred.to_csv(args.output_prefix + '_value.csv')
-        cc = pred.corrwith(new_circ)
-        cc.to_csv(args.output_prefix + '_cc.csv', header = ['CC'])
     
 def predict_with_custom(column):
     from tensorflow.keras import models, callbacks, utils
@@ -134,24 +122,25 @@ if __name__ == '__main__':
 
     parser_pre_defined = subparsers.add_parser('pre_defined', help = 'validate by predicted value of pre-defined (pan-cancer) weight')
     parser_pre_defined.add_argument('new_pcg', help = 'new Protein Coding Gene expression matrix for prediting')
-    parser_pre_defined.add_argument('--output_mode', default = 'value', choices = ['value', 'cc', 'both'], \
-        help = 'output type. ICE can only output predicted value or correlation coefficient between predicted value and measured value as matrix')
     parser_pre_defined.add_argument('--new_circ', help = 'measured value matrix of circRNAs')
     parser_pre_defined.add_argument('--output_prefix', default = 'output', help = 'output file prefix. Default is "output"')
     parser_pre_defined.add_argument('--num_threads', default = 4, type = int, help = 'cpu number for parallel processing. Default is 4')
+    parser_pre_defined.add_argument('--disable_value_output', dest = "disable_value_output", action='store_true', \
+        help = 'cancel output of predicted value. It is invalid when `--new_circ` does not exist')
     parser_pre_defined.set_defaults(func = pre_defined)
 
     parser_custom = subparsers.add_parser('custom', help = 'validate by predicted value with re-fitted models from custom PCG matrix')
     parser_custom.add_argument('train_pcg', help = 'existed Protein Coding Gene expression matrix for fitting')
     parser_custom.add_argument('train_circ', help = 'existed circRNA expression matrix for fitting')
     parser_custom.add_argument('new_pcg', help = 'new Protein Coding Gene expression matrix for prediting')
-    parser_custom.add_argument('--output_mode', default = 'value', choices = ['value', 'cc', 'both'], \
-        help = 'output type. ICE can only output predicted value or correlation coefficient between predicted value and measured value as matrix')
     parser_custom.add_argument('--new_circ', help = 'measured value matrix of circRNAs')
     parser_custom.add_argument('--output_prefix', default = 'output', help = 'output file prefix. Default is "output"')
     parser_custom.add_argument('--num_threads', default = 4, type = int, help = 'cpu number for parallel processing. Default is 4')
+    parser_custom.add_argument('--disable_value_output', dest = "disable_value_output", action='store_true', \
+        help = 'cancel output of predicted value. It is invalid when `--new_circ` does not exist')
     parser_custom.set_defaults(func = custom)
 
+    parser.set_defaults(disable_value_output=False)
     args = parser.parse_args()
 
     new_pcg = pd.read_csv(args.new_pcg)
