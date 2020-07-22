@@ -43,12 +43,10 @@ def pre_defined(args):
     with Pool(processes = args.num_threads) as pool:
         results = [pool.apply_async(predict_with_pre_defined, (model,)) \
             for model in all_models]
-        pred = []
+        pred = {}
         for result in results: 
-            pred.append(result.get())
-    pred = pd.DataFrame(pred)
-    pred.index = all_models
-    pred = pred.T
+            pred.update(result.get())
+    pred = pd.DataFrame.from_dict(pred)
     if args.new_circ:
         cc = pred.corrwith(new_circ)
         cc.to_csv(args.output_prefix + '_cc.csv', header = ['CC'])
@@ -63,7 +61,8 @@ def predict_with_pre_defined(m):
 
     model = models.load_model(os.path.join('NNmodels', m), \
         custom_objects = {"corr_corf" : corr_corf})
-    return model.predict(np.array(new_pcg.loc[:, important_genes[m]])).flatten()
+    return {m: model.predict(np.array(new_pcg.loc[:, important_genes[m]])) \
+        .flatten()}
 
 def custom(args):
     global train_circ, train_pcg
@@ -80,12 +79,10 @@ def custom(args):
     with Pool(processes = args.num_threads) as pool:
         results = [pool.apply_async(predict_with_custom, (column,)) \
             for column in train_circ.columns]
-        pred = []
+        pred = {}
         for result in results: 
-            pred.append(result.get())
-    pred = pd.DataFrame(pred)
-    pred.index = train_circ.columns
-    pred = pred.T
+            pred.update(result.get())
+    pred = pd.DataFrame.from_dict(pred)
     if args.new_circ:
         cc = pred.corrwith(new_circ)
         cc.to_csv(args.output_prefix + '_cc.csv', header = ['CC'])
@@ -113,8 +110,8 @@ def predict_with_custom(column):
     except TypeError:
         pass
     
-    return model.predict(np.array(new_pcg.iloc[:, \
-        regr.feature_importances_.argsort()[::-1][:100]])).flatten()
+    return {column: model.predict(np.array(new_pcg.iloc[:, \
+        regr.feature_importances_.argsort()[::-1][:100]])).flatten()}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Cross-dataset Validation by ICE.')
@@ -140,7 +137,7 @@ if __name__ == '__main__':
         help = 'cancel output of predicted value. It is invalid when `--new_circ` does not exist')
     parser_custom.set_defaults(func = custom)
 
-    parser.set_defaults(disable_value_output=False)
+    parser.set_defaults(disable_value_output = False)
     args = parser.parse_args()
 
     new_pcg = pd.read_csv(args.new_pcg)
